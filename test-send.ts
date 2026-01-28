@@ -17,7 +17,7 @@ console.log('🚀 Starting WhatsApp client...');
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
   puppeteer: {
-    headless: false,
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   },
 });
