@@ -5,7 +5,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { Client, LocalAuth, Message, Chat, Contact } from 'whatsapp-web.js';
+import { Client, LocalAuth, Message, Chat, Contact, MessageMedia } from 'whatsapp-web.js';
+import * as fs from 'fs';
+import * as path from 'path';
 import qrcode from 'qrcode-terminal';
 
 // WhatsApp client instance
@@ -194,6 +196,141 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['phone_or_name'],
       },
     },
+    {
+      name: 'wa_send_media',
+      description: 'Send an image or document to a WhatsApp contact',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          to: {
+            type: 'string',
+            description: 'Phone number or contact name',
+          },
+          media_path: {
+            type: 'string',
+            description: 'Path to the image or document file',
+          },
+          caption: {
+            type: 'string',
+            description: 'Optional caption for the media',
+          },
+        },
+        required: ['to', 'media_path'],
+      },
+    },
+    {
+      name: 'wa_reply_message',
+      description: 'Reply to a specific message in a chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number',
+          },
+          message_id: {
+            type: 'string',
+            description: 'ID of the message to reply to (get from wa_get_messages)',
+          },
+          reply_text: {
+            type: 'string',
+            description: 'Reply message text',
+          },
+        },
+        required: ['chat_id', 'message_id', 'reply_text'],
+      },
+    },
+    {
+      name: 'wa_react_message',
+      description: 'React to a message with an emoji',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number',
+          },
+          message_id: {
+            type: 'string',
+            description: 'ID of the message to react to',
+          },
+          emoji: {
+            type: 'string',
+            description: 'Emoji to react with (e.g., 👍, ❤️, 😂)',
+          },
+        },
+        required: ['chat_id', 'message_id', 'emoji'],
+      },
+    },
+    {
+      name: 'wa_mark_read',
+      description: 'Mark all messages in a chat as read',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number to mark as read',
+          },
+        },
+        required: ['chat_id'],
+      },
+    },
+    {
+      name: 'wa_get_profile_pic',
+      description: 'Get profile picture URL of a contact or group',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID, phone number, or contact name',
+          },
+        },
+        required: ['chat_id'],
+      },
+    },
+    {
+      name: 'wa_broadcast',
+      description: 'Send the same message to multiple contacts at once',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          recipients: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of phone numbers or contact names',
+          },
+          message: {
+            type: 'string',
+            description: 'Message to send to all recipients',
+          },
+        },
+        required: ['recipients', 'message'],
+      },
+    },
+    {
+      name: 'wa_download_media',
+      description: 'Download media from a message (image, video, document)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number',
+          },
+          message_index: {
+            type: 'number',
+            description: 'Index of the message (0 = most recent)',
+          },
+          save_path: {
+            type: 'string',
+            description: 'Path to save the downloaded file',
+          },
+        },
+        required: ['chat_id'],
+      },
+    },
   ],
 }));
 
@@ -329,9 +466,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         for (const msg of messages.reverse()) {
           const time = new Date(msg.timestamp * 1000).toLocaleString();
           const from = msg.fromMe ? '📤 You' : `📥 ${msg.author || chat.name}`;
+          const hasMedia = msg.hasMedia ? ' 📎' : '';
           
-          text += `${from} (${time}):\n`;
-          text += `${msg.body || '[Media/Sticker]'}\n\n`;
+          text += `${from} (${time})${hasMedia}:\n`;
+          text += `${msg.body || '[Media/Sticker]'}\n`;
+          text += `🆔 ID: ${msg.id.id}\n\n`;
         }
         
         return { content: [{ type: 'text', text }] };
@@ -467,6 +606,270 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         text += `📍 Is Business: ${contact.isBusiness ? 'Yes' : 'No'}\n`;
         
         return { content: [{ type: 'text', text }] };
+      }
+
+      case 'wa_send_media': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const to = args?.to as string;
+        const mediaPath = args?.media_path as string;
+        const caption = args?.caption as string;
+
+        if (!to || !mediaPath) {
+          return { content: [{ type: 'text', text: 'Error: "to" and "media_path" are required' }] };
+        }
+
+        // Check if file exists
+        if (!fs.existsSync(mediaPath)) {
+          return { content: [{ type: 'text', text: `❌ File not found: ${mediaPath}` }] };
+        }
+
+        const chatId = await findContact(to);
+        if (!chatId) {
+          return { content: [{ type: 'text', text: `❌ Could not find contact: ${to}` }] };
+        }
+
+        const media = MessageMedia.fromFilePath(mediaPath);
+        await waClient.sendMessage(chatId, media, { caption });
+
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Media sent to ${to}!\n\n📎 File: ${path.basename(mediaPath)}${caption ? `\n📝 Caption: ${caption}` : ''}`,
+          }],
+        };
+      }
+
+      case 'wa_reply_message': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdReply = args?.chat_id as string;
+        const messageId = args?.message_id as string;
+        const replyText = args?.reply_text as string;
+
+        if (!chatIdReply || !messageId || !replyText) {
+          return { content: [{ type: 'text', text: 'Error: chat_id, message_id, and reply_text are required' }] };
+        }
+
+        const formattedChatId = chatIdReply.includes('@') ? chatIdReply : formatPhoneToId(chatIdReply);
+        const chat = await waClient.getChatById(formattedChatId);
+        const messages = await chat.fetchMessages({ limit: 50 });
+        
+        // Find the message to reply to
+        const targetMsg = messages.find(m => m.id._serialized === messageId || m.id.id === messageId);
+        
+        if (!targetMsg) {
+          return { content: [{ type: 'text', text: `❌ Message not found: ${messageId}` }] };
+        }
+
+        await targetMsg.reply(replyText);
+
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Replied to message!\n\n💬 Original: ${targetMsg.body?.slice(0, 50)}...\n↩️ Reply: ${replyText}`,
+          }],
+        };
+      }
+
+      case 'wa_react_message': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdReact = args?.chat_id as string;
+        const msgIdReact = args?.message_id as string;
+        const emoji = args?.emoji as string;
+
+        if (!chatIdReact || !msgIdReact || !emoji) {
+          return { content: [{ type: 'text', text: 'Error: chat_id, message_id, and emoji are required' }] };
+        }
+
+        const formattedChatIdReact = chatIdReact.includes('@') ? chatIdReact : formatPhoneToId(chatIdReact);
+        const chatReact = await waClient.getChatById(formattedChatIdReact);
+        const messagesReact = await chatReact.fetchMessages({ limit: 50 });
+        
+        const targetMsgReact = messagesReact.find(m => m.id._serialized === msgIdReact || m.id.id === msgIdReact);
+        
+        if (!targetMsgReact) {
+          return { content: [{ type: 'text', text: `❌ Message not found: ${msgIdReact}` }] };
+        }
+
+        await targetMsgReact.react(emoji);
+
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Reacted with ${emoji} to message!`,
+          }],
+        };
+      }
+
+      case 'wa_mark_read': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdRead = args?.chat_id as string;
+        if (!chatIdRead) {
+          return { content: [{ type: 'text', text: 'Error: chat_id is required' }] };
+        }
+
+        const formattedChatIdRead = chatIdRead.includes('@') ? chatIdRead : formatPhoneToId(chatIdRead);
+        const chatRead = await waClient.getChatById(formattedChatIdRead);
+        await chatRead.sendSeen();
+
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Marked ${chatRead.name} as read!`,
+          }],
+        };
+      }
+
+      case 'wa_get_profile_pic': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdPic = args?.chat_id as string;
+        if (!chatIdPic) {
+          return { content: [{ type: 'text', text: 'Error: chat_id is required' }] };
+        }
+
+        const contactIdPic = await findContact(chatIdPic);
+        if (!contactIdPic) {
+          return { content: [{ type: 'text', text: `❌ Contact not found: ${chatIdPic}` }] };
+        }
+
+        try {
+          const picUrl = await waClient.getProfilePicUrl(contactIdPic);
+          
+          if (picUrl) {
+            return {
+              content: [{
+                type: 'text',
+                text: `🖼️ Profile Picture\n\n🔗 URL: ${picUrl}`,
+              }],
+            };
+          } else {
+            return {
+              content: [{
+                type: 'text',
+                text: `ℹ️ No profile picture available for this contact.`,
+              }],
+            };
+          }
+        } catch (e) {
+          return {
+            content: [{
+              type: 'text',
+              text: `ℹ️ Could not get profile picture (may be private).`,
+            }],
+          };
+        }
+      }
+
+      case 'wa_broadcast': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const recipients = args?.recipients as string[];
+        const broadcastMsg = args?.message as string;
+
+        if (!recipients || !broadcastMsg || recipients.length === 0) {
+          return { content: [{ type: 'text', text: 'Error: recipients array and message are required' }] };
+        }
+
+        let successCount = 0;
+        let failedRecipients: string[] = [];
+
+        for (const recipient of recipients) {
+          try {
+            const chatId = await findContact(recipient);
+            if (chatId) {
+              await waClient.sendMessage(chatId, broadcastMsg);
+              successCount++;
+              // Small delay to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+              failedRecipients.push(recipient);
+            }
+          } catch (e) {
+            failedRecipients.push(recipient);
+          }
+        }
+
+        let text = `📢 Broadcast Complete!\n\n`;
+        text += `✅ Sent: ${successCount}/${recipients.length}\n`;
+        if (failedRecipients.length > 0) {
+          text += `❌ Failed: ${failedRecipients.join(', ')}`;
+        }
+
+        return { content: [{ type: 'text', text }] };
+      }
+
+      case 'wa_download_media': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdDl = args?.chat_id as string;
+        const msgIndex = (args?.message_index as number) || 0;
+        const savePath = args?.save_path as string;
+
+        if (!chatIdDl) {
+          return { content: [{ type: 'text', text: 'Error: chat_id is required' }] };
+        }
+
+        const formattedChatIdDl = chatIdDl.includes('@') ? chatIdDl : formatPhoneToId(chatIdDl);
+        const chatDl = await waClient.getChatById(formattedChatIdDl);
+        const messagesDl = await chatDl.fetchMessages({ limit: msgIndex + 10 });
+        
+        // Find messages with media
+        const mediaMessages = messagesDl.filter(m => m.hasMedia);
+        
+        if (mediaMessages.length === 0) {
+          return { content: [{ type: 'text', text: '❌ No media messages found in this chat.' }] };
+        }
+
+        const targetMsgDl = mediaMessages[msgIndex];
+        if (!targetMsgDl) {
+          return { content: [{ type: 'text', text: `❌ Media message at index ${msgIndex} not found.` }] };
+        }
+
+        const media = await targetMsgDl.downloadMedia();
+        
+        if (!media) {
+          return { content: [{ type: 'text', text: '❌ Could not download media.' }] };
+        }
+
+        // If save path provided, save to file
+        if (savePath) {
+          const buffer = Buffer.from(media.data, 'base64');
+          const ext = media.mimetype?.split('/')[1] || 'bin';
+          const fullPath = savePath.includes('.') ? savePath : `${savePath}.${ext}`;
+          fs.writeFileSync(fullPath, buffer);
+          
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Media downloaded!\n\n📁 Saved to: ${fullPath}\n📊 Size: ${buffer.length} bytes\n📝 Type: ${media.mimetype}`,
+            }],
+          };
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: `📎 Media Info\n\n📝 Type: ${media.mimetype}\n📊 Size: ~${Math.round(media.data.length * 0.75 / 1024)}KB\n\nProvide save_path to download.`,
+          }],
+        };
       }
 
       default:

@@ -16,16 +16,36 @@ MCP (Model Context Protocol) server that connects AI assistants (Claude, etc.) t
 
 ## ✨ Features
 
+### 📬 Messaging
 | Tool | Description |
 |------|-------------|
-| `wa_status` | Check connection status, get QR code |
-| `wa_send_message` | Send message to contact or number |
+| `wa_send_message` | Send text message to contact or number |
+| `wa_send_media` | Send images, documents, files |
+| `wa_reply_message` | Reply to a specific message |
+| `wa_react_message` | React to message with emoji |
+| `wa_broadcast` | Send message to multiple contacts |
+
+### 📖 Reading
+| Tool | Description |
+|------|-------------|
 | `wa_get_chats` | List recent conversations |
 | `wa_get_messages` | Read messages from a chat |
 | `wa_search_messages` | Search messages by text |
+| `wa_download_media` | Download images/videos/docs from chat |
+
+### 👥 Contacts & Groups
+| Tool | Description |
+|------|-------------|
 | `wa_get_contacts` | List all contacts |
 | `wa_get_groups` | List WhatsApp groups |
 | `wa_get_contact_info` | Get contact details |
+| `wa_get_profile_pic` | Get profile picture URL |
+
+### ⚙️ Utilities
+| Tool | Description |
+|------|-------------|
+| `wa_status` | Check connection status |
+| `wa_mark_read` | Mark messages as read |
 
 ## 🚀 Quick Start
 
