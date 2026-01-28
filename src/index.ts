@@ -27,7 +27,7 @@ function initWhatsApp(): Promise<void> {
     waClient = new Client({
       authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
       puppeteer: {
-        headless: true,
+        headless: false,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       },
     });
