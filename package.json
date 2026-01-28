@@ -1,0 +1,35 @@
+{
+  "name": "whatsapp-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for WhatsApp - Send messages, read chats, search, and more via AI",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "whatsapp-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "keywords": [
+    "whatsapp",
+    "mcp",
+    "ai",
+    "claude",
+    "messaging",
+    "automation"
+  ],
+  "author": "Dynamo",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
