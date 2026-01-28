@@ -36,14 +36,18 @@ const checkReady = async () => {
 
 const sendMessage = async () => {
   try {
+    // Wait for client to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     const chatId = TO.includes('@c.us') ? TO : `${TO}@c.us`;
     console.log(`📤 Sending to ${chatId}...`);
     
-    await client.sendMessage(chatId, MESSAGE);
+    const msg = await client.sendMessage(chatId, MESSAGE);
     
     console.log('✅ Message sent!');
     console.log(`   To: ${TO}`);
     console.log(`   Message: ${MESSAGE}`);
+    console.log(`   ID: ${msg.id.id}`);
     
     // Wait a bit then exit
     setTimeout(() => {
