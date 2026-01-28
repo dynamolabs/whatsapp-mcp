@@ -7,8 +7,9 @@ const TO = process.argv[2] || '';
 const MESSAGE = process.argv[3] || 'Hello from WhatsApp MCP! 🤖';
 
 if (!TO) {
-  console.log('Usage: npx tsx test-send.ts <phone_number> [message]');
-  console.log('Example: npx tsx test-send.ts 6281234567890 "Hello world"');
+  console.log('Usage: npx tsx test-send.ts <contact_name_or_phone> [message]');
+  console.log('Example: npx tsx test-send.ts "Mom" "Hello!"');
+  console.log('Example: npx tsx test-send.ts 6281234567890 "Hello!"');
   process.exit(1);
 }
 
@@ -36,29 +37,54 @@ const checkReady = async () => {
 
 const sendMessage = async () => {
   try {
-    console.log('⏳ Waiting for WhatsApp to fully load...');
+    console.log('⏳ Preparing to send...');
     await new Promise(resolve => setTimeout(resolve, 5000));
     
-    const phone = TO.replace(/[^0-9]/g, '');
-    console.log(`📤 Sending to ${phone}...`);
-    
-    // Use direct puppeteer approach
     const page = (client as any).pupPage;
+    let targetDisplay = TO;
     
-    // Navigate to chat via URL
-    await page.goto(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(MESSAGE)}`);
+    // Check if it's a phone number or contact name
+    const isPhoneNumber = /^[0-9+]+$/.test(TO.replace(/[\s-]/g, ''));
     
-    console.log('⏳ Waiting for chat to load...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    if (isPhoneNumber) {
+      const phone = TO.replace(/[^0-9]/g, '');
+      await page.goto(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(MESSAGE)}`);
+    } else {
+      // It's a contact name - use search
+      await page.goto('https://web.whatsapp.com');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Click search box and type contact name
+      await page.keyboard.press('Escape'); // Close any open dialog
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Use Ctrl+Alt+/ to open search or click search
+      await page.click('[data-icon="search"]').catch(() => {});
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await page.keyboard.type(TO, { delay: 50 });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Press down and enter to select first result
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Type message
+      await page.keyboard.type(MESSAGE, { delay: 30 });
+    }
     
-    // Click send button
+    console.log(`📤 Sending message to "${targetDisplay}"...`);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Press Enter to send
     await page.keyboard.press('Enter');
     
     console.log('✅ Message sent!');
-    console.log(`   To: ${phone}`);
-    console.log(`   Message: ${MESSAGE}`);
+    console.log(`   To: ${targetDisplay}`);
+    console.log(`   Message: "${MESSAGE}"`);
     
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     console.log('👋 Done!');
     process.exit(0);
   } catch (err: any) {
