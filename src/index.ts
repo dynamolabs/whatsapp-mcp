@@ -5,7 +5,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { Client, LocalAuth, Message, Chat, Contact, MessageMedia, Location, GroupChat } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, Message, Chat, Contact, MessageMedia, Location, GroupChat } = pkg;
 import * as fs from 'fs';
 import * as path from 'path';
 import qrcode from 'qrcode-terminal';
