@@ -37,17 +37,25 @@ const checkReady = async () => {
 const sendMessage = async () => {
   try {
     // Wait for client to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('⏳ Waiting for WhatsApp to fully load...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     const chatId = TO.includes('@c.us') ? TO : `${TO}@c.us`;
     console.log(`📤 Sending to ${chatId}...`);
     
-    const msg = await client.sendMessage(chatId, MESSAGE);
+    // Get number info first
+    const numberId = await client.getNumberId(TO);
+    if (!numberId) {
+      console.log('❌ Number not on WhatsApp');
+      process.exit(1);
+    }
+    console.log(`✓ Number verified: ${numberId._serialized}`);
+    
+    const msg = await client.sendMessage(numberId._serialized, MESSAGE);
     
     console.log('✅ Message sent!');
     console.log(`   To: ${TO}`);
     console.log(`   Message: ${MESSAGE}`);
-    console.log(`   ID: ${msg.id.id}`);
     
     // Wait a bit then exit
     setTimeout(() => {
