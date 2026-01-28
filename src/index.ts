@@ -38,8 +38,24 @@ function initWhatsApp(): Promise<void> {
       qrcode.generate(qr, { small: true });
     });
 
+    let authenticated = false;
+    let loadingComplete = false;
+
+    const checkReady = () => {
+      if (authenticated && loadingComplete && !isReady) {
+        isReady = true;
+        console.error('✅ WhatsApp client is ready! (forced)');
+        resolve();
+      }
+    };
+
     waClient.on('loading_screen', (percent, message) => {
       console.error(`⏳ Loading: ${percent}% - ${message}`);
+      if (percent >= 99) {
+        loadingComplete = true;
+        // Give it 3 seconds then force ready
+        setTimeout(checkReady, 3000);
+      }
     });
 
     waClient.on('ready', () => {
@@ -50,6 +66,8 @@ function initWhatsApp(): Promise<void> {
 
     waClient.on('authenticated', () => {
       console.error('🔐 WhatsApp authenticated');
+      authenticated = true;
+      checkReady();
     });
 
     waClient.on('change_state', (state) => {
