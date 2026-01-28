@@ -36,32 +36,31 @@ const checkReady = async () => {
 
 const sendMessage = async () => {
   try {
-    // Wait for client to fully initialize
     console.log('⏳ Waiting for WhatsApp to fully load...');
     await new Promise(resolve => setTimeout(resolve, 5000));
     
-    const chatId = TO.includes('@c.us') ? TO : `${TO}@c.us`;
-    console.log(`📤 Sending to ${chatId}...`);
+    const phone = TO.replace(/[^0-9]/g, '');
+    console.log(`📤 Sending to ${phone}...`);
     
-    // Get number info first
-    const numberId = await client.getNumberId(TO);
-    if (!numberId) {
-      console.log('❌ Number not on WhatsApp');
-      process.exit(1);
-    }
-    console.log(`✓ Number verified: ${numberId._serialized}`);
+    // Use direct puppeteer approach
+    const page = (client as any).pupPage;
     
-    const msg = await client.sendMessage(numberId._serialized, MESSAGE);
+    // Navigate to chat via URL
+    await page.goto(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(MESSAGE)}`);
+    
+    console.log('⏳ Waiting for chat to load...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Click send button
+    await page.keyboard.press('Enter');
     
     console.log('✅ Message sent!');
-    console.log(`   To: ${TO}`);
+    console.log(`   To: ${phone}`);
     console.log(`   Message: ${MESSAGE}`);
     
-    // Wait a bit then exit
-    setTimeout(() => {
-      console.log('👋 Done!');
-      process.exit(0);
-    }, 2000);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log('👋 Done!');
+    process.exit(0);
   } catch (err: any) {
     console.error('❌ Error:', err.message);
     process.exit(1);
