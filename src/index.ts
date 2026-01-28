@@ -5,7 +5,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { Client, LocalAuth, Message, Chat, Contact, MessageMedia } from 'whatsapp-web.js';
+import { Client, LocalAuth, Message, Chat, Contact, MessageMedia, Location, GroupChat } from 'whatsapp-web.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import qrcode from 'qrcode-terminal';
@@ -329,6 +329,245 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ['chat_id'],
+      },
+    },
+    {
+      name: 'wa_create_group',
+      description: 'Create a new WhatsApp group',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Group name',
+          },
+          participants: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of phone numbers to add to the group',
+          },
+        },
+        required: ['name', 'participants'],
+      },
+    },
+    {
+      name: 'wa_group_info',
+      description: 'Get detailed information about a WhatsApp group',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          group_id: {
+            type: 'string',
+            description: 'Group ID (get from wa_get_groups)',
+          },
+        },
+        required: ['group_id'],
+      },
+    },
+    {
+      name: 'wa_add_to_group',
+      description: 'Add participants to a WhatsApp group',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          group_id: {
+            type: 'string',
+            description: 'Group ID',
+          },
+          participants: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Phone numbers to add',
+          },
+        },
+        required: ['group_id', 'participants'],
+      },
+    },
+    {
+      name: 'wa_remove_from_group',
+      description: 'Remove participants from a WhatsApp group (admin only)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          group_id: {
+            type: 'string',
+            description: 'Group ID',
+          },
+          participants: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Phone numbers to remove',
+          },
+        },
+        required: ['group_id', 'participants'],
+      },
+    },
+    {
+      name: 'wa_forward_message',
+      description: 'Forward a message to another chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          from_chat_id: {
+            type: 'string',
+            description: 'Source chat ID',
+          },
+          message_id: {
+            type: 'string',
+            description: 'Message ID to forward',
+          },
+          to_chat_id: {
+            type: 'string',
+            description: 'Destination chat ID or phone number',
+          },
+        },
+        required: ['from_chat_id', 'message_id', 'to_chat_id'],
+      },
+    },
+    {
+      name: 'wa_delete_message',
+      description: 'Delete a message (only your own messages)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID',
+          },
+          message_id: {
+            type: 'string',
+            description: 'Message ID to delete',
+          },
+          for_everyone: {
+            type: 'boolean',
+            description: 'Delete for everyone (true) or just for me (false)',
+          },
+        },
+        required: ['chat_id', 'message_id'],
+      },
+    },
+    {
+      name: 'wa_star_message',
+      description: 'Star or unstar a message',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID',
+          },
+          message_id: {
+            type: 'string',
+            description: 'Message ID to star',
+          },
+        },
+        required: ['chat_id', 'message_id'],
+      },
+    },
+    {
+      name: 'wa_get_starred',
+      description: 'Get all starred messages',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
+      name: 'wa_send_location',
+      description: 'Send a location to a chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          to: {
+            type: 'string',
+            description: 'Phone number or contact name',
+          },
+          latitude: {
+            type: 'number',
+            description: 'Latitude coordinate',
+          },
+          longitude: {
+            type: 'number',
+            description: 'Longitude coordinate',
+          },
+          description: {
+            type: 'string',
+            description: 'Location description/name',
+          },
+        },
+        required: ['to', 'latitude', 'longitude'],
+      },
+    },
+    {
+      name: 'wa_send_contact',
+      description: 'Send a contact card to a chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          to: {
+            type: 'string',
+            description: 'Phone number or contact name to send to',
+          },
+          contact_phone: {
+            type: 'string',
+            description: 'Phone number of the contact to share',
+          },
+        },
+        required: ['to', 'contact_phone'],
+      },
+    },
+    {
+      name: 'wa_archive_chat',
+      description: 'Archive or unarchive a chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number',
+          },
+          archive: {
+            type: 'boolean',
+            description: 'true to archive, false to unarchive',
+          },
+        },
+        required: ['chat_id', 'archive'],
+      },
+    },
+    {
+      name: 'wa_mute_chat',
+      description: 'Mute or unmute a chat',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: {
+            type: 'string',
+            description: 'Chat ID or phone number',
+          },
+          mute: {
+            type: 'boolean',
+            description: 'true to mute, false to unmute',
+          },
+          duration: {
+            type: 'string',
+            description: 'Mute duration: "8h", "1w", or "forever" (default: forever)',
+          },
+        },
+        required: ['chat_id', 'mute'],
+      },
+    },
+    {
+      name: 'wa_leave_group',
+      description: 'Leave a WhatsApp group',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          group_id: {
+            type: 'string',
+            description: 'Group ID to leave',
+          },
+        },
+        required: ['group_id'],
       },
     },
   ],
@@ -870,6 +1109,489 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             text: `📎 Media Info\n\n📝 Type: ${media.mimetype}\n📊 Size: ~${Math.round(media.data.length * 0.75 / 1024)}KB\n\nProvide save_path to download.`,
           }],
         };
+      }
+
+      case 'wa_create_group': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const groupName = args?.name as string;
+        const participants = args?.participants as string[];
+
+        if (!groupName || !participants || participants.length === 0) {
+          return { content: [{ type: 'text', text: 'Error: name and participants are required' }] };
+        }
+
+        // Format participant IDs
+        const participantIds = participants.map(p => formatPhoneToId(p));
+
+        try {
+          const result = await waClient.createGroup(groupName, participantIds);
+          const groupId = typeof result === 'string' ? result : (result as any).gid?._serialized || 'Unknown';
+          
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Group created!\n\n👥 Name: ${groupName}\n🆔 ID: ${groupId}\n👤 Members: ${participants.length}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Failed to create group: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_group_info': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const groupIdInfo = args?.group_id as string;
+        if (!groupIdInfo) {
+          return { content: [{ type: 'text', text: 'Error: group_id is required' }] };
+        }
+
+        try {
+          const chat = await waClient.getChatById(groupIdInfo);
+          
+          if (!chat.isGroup) {
+            return { content: [{ type: 'text', text: '❌ This is not a group chat.' }] };
+          }
+
+          const groupChat = chat as GroupChat;
+          const participants = groupChat.participants || [];
+          const admins = participants.filter(p => p.isAdmin || p.isSuperAdmin);
+
+          let text = `👥 Group Info: ${groupChat.name}\n\n`;
+          text += `🆔 ID: ${groupChat.id._serialized}\n`;
+          text += `📝 Description: ${groupChat.description || 'No description'}\n`;
+          text += `👤 Members: ${participants.length}\n`;
+          text += `👑 Admins: ${admins.length}\n\n`;
+
+          text += `👑 Admin List:\n`;
+          for (const admin of admins.slice(0, 10)) {
+            text += `  • ${admin.id.user}\n`;
+          }
+
+          text += `\n👤 Members (first 20):\n`;
+          for (const member of participants.slice(0, 20)) {
+            const role = member.isSuperAdmin ? '👑' : member.isAdmin ? '⭐' : '•';
+            text += `  ${role} ${member.id.user}\n`;
+          }
+
+          if (participants.length > 20) {
+            text += `  ... and ${participants.length - 20} more`;
+          }
+
+          return { content: [{ type: 'text', text }] };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_add_to_group': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const groupIdAdd = args?.group_id as string;
+        const participantsAdd = args?.participants as string[];
+
+        if (!groupIdAdd || !participantsAdd) {
+          return { content: [{ type: 'text', text: 'Error: group_id and participants are required' }] };
+        }
+
+        try {
+          const chat = await waClient.getChatById(groupIdAdd);
+          if (!chat.isGroup) {
+            return { content: [{ type: 'text', text: '❌ This is not a group chat.' }] };
+          }
+
+          const groupChat = chat as GroupChat;
+          const participantIds = participantsAdd.map(p => formatPhoneToId(p));
+          
+          await groupChat.addParticipants(participantIds);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Added ${participantsAdd.length} participant(s) to ${groupChat.name}!`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_remove_from_group': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const groupIdRemove = args?.group_id as string;
+        const participantsRemove = args?.participants as string[];
+
+        if (!groupIdRemove || !participantsRemove) {
+          return { content: [{ type: 'text', text: 'Error: group_id and participants are required' }] };
+        }
+
+        try {
+          const chat = await waClient.getChatById(groupIdRemove);
+          if (!chat.isGroup) {
+            return { content: [{ type: 'text', text: '❌ This is not a group chat.' }] };
+          }
+
+          const groupChat = chat as GroupChat;
+          const participantIds = participantsRemove.map(p => formatPhoneToId(p));
+          
+          await groupChat.removeParticipants(participantIds);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Removed ${participantsRemove.length} participant(s) from ${groupChat.name}!`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_forward_message': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const fromChatId = args?.from_chat_id as string;
+        const msgIdFwd = args?.message_id as string;
+        const toChatId = args?.to_chat_id as string;
+
+        if (!fromChatId || !msgIdFwd || !toChatId) {
+          return { content: [{ type: 'text', text: 'Error: from_chat_id, message_id, and to_chat_id are required' }] };
+        }
+
+        try {
+          const formattedFromId = fromChatId.includes('@') ? fromChatId : formatPhoneToId(fromChatId);
+          const chat = await waClient.getChatById(formattedFromId);
+          const messages = await chat.fetchMessages({ limit: 50 });
+          
+          const targetMsg = messages.find(m => m.id._serialized === msgIdFwd || m.id.id === msgIdFwd);
+          
+          if (!targetMsg) {
+            return { content: [{ type: 'text', text: `❌ Message not found: ${msgIdFwd}` }] };
+          }
+
+          const destId = await findContact(toChatId);
+          if (!destId) {
+            return { content: [{ type: 'text', text: `❌ Destination not found: ${toChatId}` }] };
+          }
+
+          await targetMsg.forward(destId);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Message forwarded to ${toChatId}!`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_delete_message': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdDel = args?.chat_id as string;
+        const msgIdDel = args?.message_id as string;
+        const forEveryone = args?.for_everyone !== false;
+
+        if (!chatIdDel || !msgIdDel) {
+          return { content: [{ type: 'text', text: 'Error: chat_id and message_id are required' }] };
+        }
+
+        try {
+          const formattedChatIdDel = chatIdDel.includes('@') ? chatIdDel : formatPhoneToId(chatIdDel);
+          const chatDel = await waClient.getChatById(formattedChatIdDel);
+          const messagesDel = await chatDel.fetchMessages({ limit: 50 });
+          
+          const targetMsgDel = messagesDel.find(m => m.id._serialized === msgIdDel || m.id.id === msgIdDel);
+          
+          if (!targetMsgDel) {
+            return { content: [{ type: 'text', text: `❌ Message not found: ${msgIdDel}` }] };
+          }
+
+          if (!targetMsgDel.fromMe) {
+            return { content: [{ type: 'text', text: `❌ Can only delete your own messages.` }] };
+          }
+
+          await targetMsgDel.delete(forEveryone);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Message deleted${forEveryone ? ' for everyone' : ''}!`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_star_message': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdStar = args?.chat_id as string;
+        const msgIdStar = args?.message_id as string;
+
+        if (!chatIdStar || !msgIdStar) {
+          return { content: [{ type: 'text', text: 'Error: chat_id and message_id are required' }] };
+        }
+
+        try {
+          const formattedChatIdStar = chatIdStar.includes('@') ? chatIdStar : formatPhoneToId(chatIdStar);
+          const chatStar = await waClient.getChatById(formattedChatIdStar);
+          const messagesStar = await chatStar.fetchMessages({ limit: 50 });
+          
+          const targetMsgStar = messagesStar.find(m => m.id._serialized === msgIdStar || m.id.id === msgIdStar);
+          
+          if (!targetMsgStar) {
+            return { content: [{ type: 'text', text: `❌ Message not found: ${msgIdStar}` }] };
+          }
+
+          await targetMsgStar.star();
+
+          return {
+            content: [{
+              type: 'text',
+              text: `⭐ Message starred!`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_get_starred': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        try {
+          const chats = await waClient.getChats();
+          let starredMessages: { chat: string; body: string; time: string }[] = [];
+
+          for (const chat of chats.slice(0, 20)) {
+            try {
+              const messages = await chat.fetchMessages({ limit: 100 });
+              const starred = messages.filter(m => m.isStarred);
+              
+              for (const msg of starred) {
+                starredMessages.push({
+                  chat: chat.name,
+                  body: msg.body?.slice(0, 100) || '[Media]',
+                  time: new Date(msg.timestamp * 1000).toLocaleString(),
+                });
+              }
+            } catch (e) {
+              // Skip chats that can't be fetched
+            }
+          }
+
+          if (starredMessages.length === 0) {
+            return { content: [{ type: 'text', text: '⭐ No starred messages found.' }] };
+          }
+
+          let text = `⭐ Starred Messages:\n\n`;
+          for (const msg of starredMessages.slice(0, 20)) {
+            text += `📍 ${msg.chat} (${msg.time}):\n`;
+            text += `${msg.body}\n\n`;
+          }
+
+          return { content: [{ type: 'text', text }] };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_send_location': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const toLoc = args?.to as string;
+        const latitude = args?.latitude as number;
+        const longitude = args?.longitude as number;
+        const locDescription = args?.description as string;
+
+        if (!toLoc || latitude === undefined || longitude === undefined) {
+          return { content: [{ type: 'text', text: 'Error: to, latitude, and longitude are required' }] };
+        }
+
+        try {
+          const chatId = await findContact(toLoc);
+          if (!chatId) {
+            return { content: [{ type: 'text', text: `❌ Contact not found: ${toLoc}` }] };
+          }
+
+          const locationOptions = locDescription ? { name: locDescription } : undefined;
+          const location = new Location(latitude, longitude, locationOptions);
+          await waClient.sendMessage(chatId, location);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `📍 Location sent to ${toLoc}!\n\n🌍 Coordinates: ${latitude}, ${longitude}${locDescription ? `\n📝 ${locDescription}` : ''}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_send_contact': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const toContact = args?.to as string;
+        const contactPhone = args?.contact_phone as string;
+
+        if (!toContact || !contactPhone) {
+          return { content: [{ type: 'text', text: 'Error: to and contact_phone are required' }] };
+        }
+
+        try {
+          const chatId = await findContact(toContact);
+          if (!chatId) {
+            return { content: [{ type: 'text', text: `❌ Recipient not found: ${toContact}` }] };
+          }
+
+          const contactId = formatPhoneToId(contactPhone);
+          const contact = await waClient.getContactById(contactId);
+          
+          // Create vCard
+          const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${contact.name || contact.pushname || contact.number}\nTEL;type=CELL;type=VOICE;waid=${contact.number}:+${contact.number}\nEND:VCARD`;
+
+          await waClient.sendMessage(chatId, vcard, { parseVCards: true });
+
+          return {
+            content: [{
+              type: 'text',
+              text: `📇 Contact sent to ${toContact}!\n\n👤 ${contact.name || contact.pushname || contact.number}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_archive_chat': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdArchive = args?.chat_id as string;
+        const shouldArchive = args?.archive as boolean;
+
+        if (!chatIdArchive || shouldArchive === undefined) {
+          return { content: [{ type: 'text', text: 'Error: chat_id and archive are required' }] };
+        }
+
+        try {
+          const formattedId = chatIdArchive.includes('@') ? chatIdArchive : formatPhoneToId(chatIdArchive);
+          const chat = await waClient.getChatById(formattedId);
+          
+          await chat.archive();
+
+          return {
+            content: [{
+              type: 'text',
+              text: `📦 Chat ${shouldArchive ? 'archived' : 'unarchived'}: ${chat.name}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_mute_chat': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const chatIdMute = args?.chat_id as string;
+        const shouldMute = args?.mute as boolean;
+        const duration = args?.duration as string || 'forever';
+
+        if (!chatIdMute || shouldMute === undefined) {
+          return { content: [{ type: 'text', text: 'Error: chat_id and mute are required' }] };
+        }
+
+        try {
+          const formattedId = chatIdMute.includes('@') ? chatIdMute : formatPhoneToId(chatIdMute);
+          const chat = await waClient.getChatById(formattedId);
+          
+          if (shouldMute) {
+            // Calculate mute date
+            let unmuteDate: Date;
+            if (duration === '8h') {
+              unmuteDate = new Date(Date.now() + 8 * 60 * 60 * 1000);
+            } else if (duration === '1w') {
+              unmuteDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            } else {
+              // Forever - 1 year
+              unmuteDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+            }
+            await chat.mute(unmuteDate);
+          } else {
+            await chat.unmute();
+          }
+
+          return {
+            content: [{
+              type: 'text',
+              text: `🔇 Chat ${shouldMute ? `muted (${duration})` : 'unmuted'}: ${chat.name}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
+      }
+
+      case 'wa_leave_group': {
+        if (!waClient || !isReady) {
+          return { content: [{ type: 'text', text: '❌ WhatsApp not connected. Use wa_status first.' }] };
+        }
+
+        const groupIdLeave = args?.group_id as string;
+        if (!groupIdLeave) {
+          return { content: [{ type: 'text', text: 'Error: group_id is required' }] };
+        }
+
+        try {
+          const chat = await waClient.getChatById(groupIdLeave);
+          
+          if (!chat.isGroup) {
+            return { content: [{ type: 'text', text: '❌ This is not a group chat.' }] };
+          }
+
+          const groupChat = chat as GroupChat;
+          await groupChat.leave();
+
+          return {
+            content: [{
+              type: 'text',
+              text: `👋 Left group: ${groupChat.name}`,
+            }],
+          };
+        } catch (e: any) {
+          return { content: [{ type: 'text', text: `❌ Error: ${e.message}` }] };
+        }
       }
 
       default:

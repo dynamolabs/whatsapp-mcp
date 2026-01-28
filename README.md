@@ -41,11 +41,32 @@ MCP (Model Context Protocol) server that connects AI assistants (Claude, etc.) t
 | `wa_get_contact_info` | Get contact details |
 | `wa_get_profile_pic` | Get profile picture URL |
 
+### 👥 Group Management
+| Tool | Description |
+|------|-------------|
+| `wa_create_group` | Create new WhatsApp group |
+| `wa_group_info` | Get group details (members, admins) |
+| `wa_add_to_group` | Add members to group |
+| `wa_remove_from_group` | Remove members from group |
+| `wa_leave_group` | Leave a group |
+
 ### ⚙️ Utilities
 | Tool | Description |
 |------|-------------|
 | `wa_status` | Check connection status |
 | `wa_mark_read` | Mark messages as read |
+| `wa_forward_message` | Forward message to another chat |
+| `wa_delete_message` | Delete your messages |
+| `wa_star_message` | Star important messages |
+| `wa_get_starred` | Get all starred messages |
+| `wa_archive_chat` | Archive/unarchive chats |
+| `wa_mute_chat` | Mute/unmute notifications |
+
+### 📍 Special Messages
+| Tool | Description |
+|------|-------------|
+| `wa_send_location` | Share location coordinates |
+| `wa_send_contact` | Share contact card |
 
 ## 🚀 Quick Start
 
