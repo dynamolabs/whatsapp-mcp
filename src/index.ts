@@ -38,6 +38,10 @@ function initWhatsApp(): Promise<void> {
       qrcode.generate(qr, { small: true });
     });
 
+    waClient.on('loading_screen', (percent, message) => {
+      console.error(`⏳ Loading: ${percent}% - ${message}`);
+    });
+
     waClient.on('ready', () => {
       isReady = true;
       console.error('✅ WhatsApp client is ready!');
@@ -46,6 +50,10 @@ function initWhatsApp(): Promise<void> {
 
     waClient.on('authenticated', () => {
       console.error('🔐 WhatsApp authenticated');
+    });
+
+    waClient.on('change_state', (state) => {
+      console.error(`🔄 State changed: ${state}`);
     });
 
     waClient.on('auth_failure', (msg) => {
